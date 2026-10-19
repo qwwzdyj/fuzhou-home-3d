@@ -1,0 +1,40 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>福州新家 · 3D 互动分享</title><meta name="description" content="旋转查看福州新家三维模型，开关房门、自由漫游、调整家具。"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="data:,"><link rel="stylesheet" href="viewer.css"></head><body>
+<header><div><span class="eyebrow">FUZHOU / HOME RECORD</span><h1>福州新家 <em>现状模型</em></h1></div><div class="headerRight"><span class="badge">公开分享 · MVP v05</span><button id="maxView" aria-pressed="false">放大模型</button><button id="help">查看操作说明</button></div></header>
+<main><aside><nav class="tabs"><button class="active" data-tab="explore">看模型</button><button data-tab="evidencePage">尺寸说明</button><button data-tab="deliverables">使用说明</button></nav>
+<section class="tabPage" id="explore"><div class="notice"><b>v05 / 五扇门宽已按实测更新</b><p>入户 86 · 主卧 80.5 · 次卧 76.5 · 厨房 72 · 卫生间 62 cm。用户已确认是门扇宽度／开门半径；门框净宽与墙体洞口仍暂定。</p></div>
+<h2>01 / 选择视图</h2><div class="row"><button id="home" class="primary">全屋鸟瞰 R</button><button id="top">俯视布局 T</button></div>
+<div class="segmented"><button data-mode="cut" class="active">低墙剖切</button><button data-mode="shell">完整墙高</button><button data-mode="full">含顶板</button></div>
+<label class="selectLabel" for="cameraSelect">走进房间 · 固定机位</label><select id="cameraSelect"><option value="">选择一个室内视角</option></select>
+<section class="doorPanel" aria-label="门的开合控制"><h2>门 / 点击开关</h2><label class="selectLabel" for="doorSelect">选择一扇门</label><select id="doorSelect"></select><p id="doorSize" class="doorMeasurement"></p><div class="row compact"><button id="doorToggle" class="primary">开门</button><button id="doorFocus">定位这扇门</button></div><label class="doorRangeLabel" for="doorRange">开合程度 <output id="doorValue">0°</output></label><input id="doorRange" type="range" min="0" max="100" step="1" value="0"><p id="doorNote" class="muted"></p><button id="doorReset" class="wide">恢复全部门的初始姿态</button></section><h2>02 / 空间导航</h2><div id="rooms" class="roomGrid"></div><div id="roomInfo" class="roomInfo"></div>
+<h2>03 / 显示与工具</h2><div class="toggles"><label><input id="furniture" type="checkbox" checked> 家具与设备</label><label><input id="labels" type="checkbox" checked> 房间标签</label><label><input id="grid" type="checkbox"> 1 m 地面网格</label></div><div class="row"><button id="measure">模型两点测距</button><button id="screenshot">保存当前截图</button></div><p class="muted">测距只反映此模型的几何值，不会把暂定值变成实测值。</p>
+<h2>04 / 调整家具 <span id="assetCount"></span></h2><p class="muted">点击模型选中整件家具，或在下方查找。删除只影响当前方案，墙门窗受保护；自动保存在此浏览器。</p>
+<label class="selectLabel" for="assetSearch">搜索家具</label><input id="assetSearch" type="search" placeholder="床、柜、厨房…" autocomplete="off">
+<label class="selectLabel" for="assetRoom">家具所在空间</label><select id="assetRoom"><option value="">全部空间</option></select>
+<div class="row compact"><button id="undoEdit" disabled>撤销调整</button><button id="restoreAll" disabled>恢复全部</button></div><div id="assetList"></div>
+<p id="editStatus" class="muted" role="status">未删除家具 · 原始模型不改写</p>
+<div class="row compact"><button id="savePlan">保存方案 JSON</button><button id="importPlan">载入方案</button></div><input id="planFile" type="file" accept=".json,application/json" hidden>
+<button id="exportEdited" class="primary wide">导出当前方案 GLB</button><p class="muted">导出包含完整墙高与顶板，不受剖切/隐藏家具开关影响；仅移除你明确删除的整件家具，并保留当前门的姿态。</p>
+</section>
+<section class="tabPage" id="evidencePage" hidden>
+<div class="notice"><b>尺寸有实测，也有暂定</b><p>五扇门的门扇宽度由屋主确认。其余参数为当前建模参考，房间尺寸、门洞净宽与外轮廓仍需复核。</p></div>
+<h2>门扇宽度 / 开门半径</h2><p class="muted">门轴到门扇外缘；不是圆的直径，也不是门框内净宽。</p>
+<table><thead><tr><th>门</th><th>宽度</th><th>状态</th></tr></thead><tbody id="userMeasurements"></tbody></table>
+<h2>主要建模参数 / m</h2><table><thead><tr><th>项目</th><th>采用</th><th>状态</th></tr></thead><tbody id="parameters"></tbody></table>
+</section>
+<section class="tabPage" id="deliverables" hidden>
+<div class="notice"><b>欢迎来看看这个家</b><p>不用安装 Blender。可以自由转动模型、开关门，试着删掉家具，看一看腾出的空间。</p></div>
+<h2>怎么操作</h2><ol class="shareGuide"><li>电脑：左键旋转，右键平移，滚轮缩放。</li><li>手机：单指旋转，双指缩放或平移；“放大模型”可收起侧栏。</li><li>点击门开关；在“看模型”中选择门并拖动滑块，可调整开合程度。</li><li>选择“自由漫游”，用 WASD 或画面箭头走动；“相机地图”可直接拖动相机位置。</li><li>点击整件家具后删除，支持撤销与恢复。导出 JSON 可保存方案，也可导出当前 GLB 模型。</li></ol>
+<h2>只改变你的方案</h2><p class="muted">家具删除与门状态只保存在你当前使用的浏览器，不会修改屋主的模型，也不会影响其他访客。长期保存请下载方案 JSON。相机位置可随 JSON 保存及载入。</p>
+<h2>关于这个版本</h2><p class="muted">公开版只包含网页和三维模型，不包含原始视频、照片或本机文件路径。模型为现状 MVP，部分尺寸暂定；门与相机运动不包含碰撞检测，朝向不是实际指南针方向。</p>
+<a class="file" href="https://github.com/qwwzdyj/fuzhou-home-3d" target="_blank" rel="noopener noreferrer">GitHub 项目 ↗</a>
+</section></aside>
+<div id="viewport"><div id="labelLayer"></div>
+<div class="hud"><span id="modeLabel">正在加载</span><span id="navHint">左键旋转 · 右键平移 · 滚轮缩放</span></div>
+<div class="navTools" aria-label="相机操控"><button data-nav="orbit" class="active" title="左键环绕旋转">旋转</button><button data-nav="pan" title="左键拖拽移动取景中心">拖拽平移</button><button data-nav="fly" title="拖拽转头，WASD 移动相机">自由漫游</button><button id="mapToggle" aria-expanded="false">相机地图</button><button id="quickHome">回全屋</button></div>
+<section id="cameraMap" hidden aria-label="拖动相机位置"><b>拖动地图，移动相机</b><svg id="mapSvg" viewBox="0 0 300 100" role="img" aria-label="相机位置平面图"></svg><label for="eyeHeight">视点高度 <output id="eyeValue">1.65 m</output></label><input id="eyeHeight" type="range" min="0.6" max="2.3" step="0.05" value="1.65"><p>上方=窗侧 · 下方=走道侧 · 朝向非指南针</p></section>
+<div id="flyPad" hidden><span>WASD 移动 · Q/E 升降 · Shift 加速</span><div><button data-walk="left" aria-label="相机向左">←</button><button data-walk="forward" aria-label="相机前进">↑</button><button data-walk="back" aria-label="相机后退">↓</button><button data-walk="right" aria-label="相机向右">→</button></div></div>
+<div id="loading">正在加载三维模型（约 5 MB）…</div><div id="distance" hidden></div>
+<div id="selection" role="status"><span id="selectedName">点击门开关 · 点击家具选择 · 拖拽移动视角</span><button id="quickDoor" hidden>开关此门</button><button id="deleteSelected" hidden>删除这件家具</button><button id="quickUndo" hidden>撤销</button></div></div></main>
+<footer><span id="status">3D 互动分享</span><span>公开模型分享 · 调整仅保存在你的浏览器 · 非真实朝向</span></footer>
+<dialog id="helpDialog"><h2>查看与调整你的家</h2><ol><li><b>门的交互：</b>点击门扇或门框开关；侧栏选择门、定位、滑块调角度。5 扇平开门＋1 组阳台推拉门，支持撤销、刷新恢复与 JSON 保存。门开合不含碰撞检测。</li><li><b>旋转 / 拖拽平移：</b>切换画面上方工具。平移模式左键拖拽就能改变取景中心，滚轮缩放。</li><li><b>自由漫游：</b>左键拖拽转头；WASD 移动相机，Q/E 升降，Shift 加速。右键拖动或 Shift + 左键拖动平移。触屏可用箭头按钮移动。</li><li><b>相机地图：</b>点地图或拖动相机圆点，直接设置位置；拖动高度滑块调整视点。地图不是指南针。</li><li><b>删除家具：</b>点击模型选中整件，再点“删除这件家具”，也可在侧栏列表操作。支持撤销、恢复全部，刷新保留当前删除记录。</li><li><b>保存：</b>JSON 保存/载入家具、门和相机方案；GLB 导出当前门姿态及删除后的完整空间。不会修改共享模型或其他人的方案。浏览器缓存可能被清理，长期保存请下载方案。</li><li>R 回全屋、T 俯视、Esc 取消选择、Delete 删除选中家具。室内导航不含墙体碰撞，穿墙后可从地图重新定位。</li><li>五扇门宽已按屋主确认值更新；门框、洞口与其他暂定尺寸仍待测。测距为模型几何值，不代表现场实测。</li></ol><button id="closeHelp" class="primary">开始查看</button></dialog>
+<script src="model-data.js"></script><script src="viewer.js"></script></body></html>

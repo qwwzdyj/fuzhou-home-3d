@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {PLAN_SCHEMA, visibleMesh, decodePlan, pushHistory} from './edit-state.mjs';
+const ids=new Set(['bed','rack']);
+test('deleted whole asset stays hidden in full mode',()=>assert.equal(visibleMesh({asset_id:'bed',group:'small'},'full',true,new Set(['bed'])),false));
+test('temporary furniture switch hides assets',()=>assert.equal(visibleMesh({asset_id:'bed'},'full',false,new Set()),false));
+test('architecture stays when furniture is hidden',()=>assert.equal(visibleMesh({group:'wall'},'cut',false,new Set()),true));
+test('cut mode hides upper walls',()=>assert.equal(visibleMesh({group:'upper'},'cut',true,new Set()),false));
+test('full export mode includes upper walls',()=>assert.equal(visibleMesh({group:'upper'},'full',true,new Set()),true));
+test('shell mode hides ceilings',()=>assert.equal(visibleMesh({group:'ceil'},'shell',true,new Set()),false));
+test('plan removes duplicate identifiers',()=>assert.deepEqual(decodePlan({schema:PLAN_SCHEMA,deleted:['bed','bed']},ids).deleted,['bed']));
+test('plan cannot delete unknown architecture',()=>assert.throws(()=>decodePlan({schema:PLAN_SCHEMA,deleted:['wall']},ids)));
+test('malformed camera rejected',()=>assert.throws(()=>decodePlan({schema:PLAN_SCHEMA,deleted:[],camera:{position:[0,null,0],target:[0,0,0]}},ids)));
+test('unrecognized schema rejected',()=>assert.throws(()=>decodePlan({schema:'wrong',deleted:[]},ids)));
+test('undo history is bounded',()=>{const h=[];for(let i=0;i<60;i++)pushHistory(h,new Set([String(i)]));assert.equal(h.length,50);assert.deepEqual(h[0],['10']);});
+test('camera and view settings round-trip',()=>{const p={schema:PLAN_SCHEMA,deleted:['bed'],camera:{position:[1,2,-3],target:[1,1,-4]},view:{mode:'full',nav:'fly',fov:42}};assert.deepEqual(decodePlan(JSON.stringify(p),ids),{deleted:['bed'],camera:p.camera,view:p.view});});
+test('bad lens rejected',()=>assert.throws(()=>decodePlan({schema:PLAN_SCHEMA,deleted:[],view:{mode:'full',nav:'fly',fov:NaN}},ids)));
+test('bad view mode rejected',()=>assert.throws(()=>decodePlan({schema:PLAN_SCHEMA,deleted:[],view:{mode:'bad',nav:'fly',fov:42}},ids)));

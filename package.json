@@ -1,0 +1,19 @@
+{
+  "name": "fuzhou-home-3d",
+  "version": "1.0.0",
+  "description": "Interactive 3D home viewer for GitHub Pages",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --minify --format=iife --outfile=viewer.js",
+    "test": "node --test src/*.test.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "dependencies": {
+    "esbuild": "0.28.2",
+    "three": "0.186.1"
+  },
+  "private": true
+}
