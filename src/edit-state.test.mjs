@@ -16,3 +16,14 @@ test('undo history is bounded',()=>{const h=[];for(let i=0;i<60;i++)pushHistory(
 test('camera and view settings round-trip',()=>{const p={schema:PLAN_SCHEMA,deleted:['bed'],camera:{position:[1,2,-3],target:[1,1,-4]},view:{mode:'full',nav:'fly',fov:42}};assert.deepEqual(decodePlan(JSON.stringify(p),ids),{deleted:['bed'],camera:p.camera,view:p.view});});
 test('bad lens rejected',()=>assert.throws(()=>decodePlan({schema:PLAN_SCHEMA,deleted:[],view:{mode:'full',nav:'fly',fov:NaN}},ids)));
 test('bad view mode rejected',()=>assert.throws(()=>decodePlan({schema:PLAN_SCHEMA,deleted:[],view:{mode:'bad',nav:'fly',fov:42}},ids)));
+test('desk configuration round-trips with deletion and old plans omit it',()=>{
+ const desks={enabled:true,widths:[1,1.2]},plan={schema:PLAN_SCHEMA,deleted:['bed'],desks};
+ assert.deepEqual(decodePlan(JSON.stringify(plan),ids).desks,desks);
+ assert.equal('desks' in decodePlan({schema:PLAN_SCHEMA,deleted:[]},ids),false);
+ assert.throws(()=>decodePlan({...plan,desks:{enabled:true,widths:[1,9]}},ids));
+});
+test('undo keeps independent desk configuration and deleted assets',()=>{
+ const h=[],desks={enabled:true,widths:[1,1]},deleted=new Set(['bed']);pushHistory(h,deleted,{},desks);
+ desks.widths[0]=1.4;desks.enabled=false;deleted.clear();
+ assert.deepEqual(h[0],{deleted:['bed'],doors:{},desks:{enabled:true,widths:[1,1]}});
+});
