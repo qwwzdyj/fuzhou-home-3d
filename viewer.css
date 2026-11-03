@@ -12,4 +12,9 @@ main.maximized{grid-template-columns:1fr}button:disabled{opacity:.4;cursor:not-a
 
 .doorMeasurement{font-size:12px;line-height:1.65;color:#285343;font-weight:600;margin:10px 0;background:#e1ebd9;padding:9px;border-radius:5px}
 
+/* Bedroom dimensions: shared by local and public viewers. */
+.bedroomPanel{margin-top:20px}.bedroomPanel>h2{margin-bottom:6px;color:#285343}.bedroomPanel>.muted{margin-top:0}.bedroomCard{border:1px solid #d4decf;border-left:3px solid var(--bedroom-color);padding:12px;margin:10px 0;border-radius:8px;background:#f4f7f0}.bedroomCard.chosen{box-shadow:0 0 0 2px var(--bedroom-color)}.bedroomCardTitle{display:flex;justify-content:space-between;gap:6px;font-size:12px}.bedroomCardTitle span{font-size:9px;color:#89734f;background:#eee9dc;border-radius:4px;padding:3px 5px;white-space:nowrap}.bedroomNumbers{display:flex;gap:20px;margin:13px 0 9px;font-size:11px;color:#61705e}.bedroomNumbers strong{font-size:24px;font-variant-numeric:tabular-nums;color:var(--bedroom-color);font-weight:650;letter-spacing:-.5px}.bedroomCard p{font-size:10px;line-height:1.7;color:#70816b;margin:5px 0}.bedroomCard .row{margin-top:10px}.bedroomCard .row button{padding:7px 4px;font-size:11px}.bedroomPanel>.wide{font-size:12px}#bedroomQuick{pointer-events:auto;width:132px;font-size:11px;padding:7px 5px;background:#fafcf6ef}.bedroomRoomLabel small{display:block;font-size:9px;font-weight:400;margin-top:3px;color:#6b7b62}.bedroomRoomLabel{border-color:#66826a}.bedroomRoomLabel.dimensionFocused small{display:none}.navTools{align-items:center}@media(max-width:600px){#bedroomQuick{font-size:10px;padding:5px;width:116px}.bedroomNumbers strong{font-size:23px}.bedroomPanel{margin-top:14px}.bedroomCardTitle span{font-size:10px}}
+
+#cameraMap{top:145px}@media(max-width:600px){#cameraMap{top:122px}}
+
 .shareGuide{padding-left:20px;font-size:12px;line-height:1.9;color:#63735d}.shareGuide li{margin-bottom:12px}
