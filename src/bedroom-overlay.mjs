@@ -9,10 +9,10 @@ export function createBedroomOverlay(bedrooms) {
     const mesh=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color,transparent:true,opacity,depthTest:false,depthWrite:false}));
     mesh.renderOrder=20;parent.add(mesh);
   }
-  function text(parent, caption, position, color) {
+  function text(parent, caption, position, color, foreground='#fff') {
     const canvas=document.createElement('canvas');canvas.width=384;canvas.height=96;
     const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(2,2,380,92,15);ctx.fill();
-    ctx.fillStyle='#fff';ctx.font='600 36px -apple-system, "PingFang SC", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(caption,192,49);
+    ctx.fillStyle=foreground;ctx.font='600 36px -apple-system, "PingFang SC", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(caption,192,49);
     const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
     const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,depthTest:false,depthWrite:false,toneMapped:false}));
     sprite.position.copy(position);sprite.renderOrder=21;sprite.userData.caption=caption;parent.add(sprite);sprites.push(sprite);
@@ -20,6 +20,7 @@ export function createBedroomOverlay(bedrooms) {
   for(const bedroom of bedrooms) {
     const group=new THREE.Group();groups.set(bedroom.id,group);root.add(group);
     const [x0,x1,y0,y1]=bedroom.rect, color=bedroom.color;
+    text(group,bedroom.name,to3([(x0+x1)/2,(y0+y1)/2,.25]),'#fffef1',color);
     line(group,[[x0,y0,.05],[x1,y0,.05],[x1,y1,.05],[x0,y1,.05],[x0,y0,.05]].map(to3),color,.8);
     for(const d of bedroomDimensionSegments(bedroom.rect)) {
       const a=to3(d.start),b=to3(d.end),direction=b.clone().sub(a).normalize();

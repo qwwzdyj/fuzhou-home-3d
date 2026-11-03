@@ -319,7 +319,7 @@ function animate(t){
  const dimensionIds=new Set(mode==='cut'&&nav!=='fly'?(dimensionScope==='all'?bedrooms.map(b=>b.id):dimensionScope?[dimensionScope]:[]):[]);
  bedroomOverlay.update(camera,viewport.clientHeight,dimensionIds);
  renderer.render(scene,camera);updateMap();
- for(const l of labelNodes){const p=l.pos.clone().project(camera),show=labels&&mode==='cut'&&(!dimensionScope||dimensionIds.has(l.key))&&p.z<1&&p.z>-1&&Math.abs(p.x)<1&&Math.abs(p.y)<1;l.el.hidden=!show;l.el.classList.toggle('dimensionFocused',dimensionIds.has(l.key));if(show)l.el.style.transform=`translate(${(p.x+1)*viewport.clientWidth/2}px,${(-p.y+1)*viewport.clientHeight/2}px) translate(-50%,-50%)`;}
+ for(const l of labelNodes){const p=l.pos.clone().project(camera),show=labels&&mode==='cut'&&!dimensionScope&&p.z<1&&p.z>-1&&Math.abs(p.x)<1&&Math.abs(p.y)<1;l.el.hidden=!show;if(show)l.el.style.transform=`translate(${(p.x+1)*viewport.clientWidth/2}px,${(-p.y+1)*viewport.clientHeight/2}px) translate(-50%,-50%)`;}
 }
 function load(){
  try{
