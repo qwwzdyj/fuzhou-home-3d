@@ -8,6 +8,8 @@ import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {roomDimensions} from './bedroom-dimensions.mjs';
 import {createBedroomOverlay} from './bedroom-overlay.mjs';
 import {defaultDesks,decodeDesks,deskLayout,overlapRect,DESK_IDS} from './desk-plan.mjs';
+import {defaultFurnishing,decodeFurnishing,migrateRemovals,BASE_REMOVALS} from './furnishing-plan.mjs';
+import {createFurnishing} from './furnishing-geometry.mjs';
 import {createDeskMeshes} from './desk-geometry.mjs';
 
 const data=window.HOME_DATA, $=id=>document.getElementById(id), rooms=data.layout.rooms;
@@ -36,7 +38,7 @@ const grid=new THREE.GridHelper(30,30,0xb3c0b8,0xd1dad3);grid.position.set(1.6,-
 let model, meshes=[], mode='cut', furniture=true, labels=true, selectedId=null;
 let measureMode=false, measurePoints=[], tween=null, nav='orbit';
 const assets=new Map(), deleted=new Set(), history=[];
-let deskConfig=defaultDesks();
+let deskConfig=defaultDesks(),furnishingConfig=defaultFurnishing(),furnishingCatalog=[];
 const storageKey='fuzhou-home-public-v05-edits';
 const doors=new Map(); let selectedDoor=null, sliderEditing=false;
 const rulerGroup=new THREE.Group();scene.add(rulerGroup);
@@ -95,6 +97,26 @@ function rebuildDesks(){
  for(const o of built.meshes){model.add(o);meshes.push(o);const id=o.userData.asset_id;if(!assets.has(id))assets.set(id,{label:o.userData.asset_label,room:'small',proposed:true,meshes:[]});assets.get(id).meshes.push(o);}
  model.updateMatrixWorld(true);
 }
+function rebuildFurnishing(){
+ if(!model)return;
+ const ids=new Set(meshes.filter(m=>m.userData.new_furnishing).map(m=>m.userData.asset_id));
+ for(const o of meshes.filter(m=>m.userData.new_furnishing)){o.removeFromParent();o.geometry.dispose();o.material.dispose();}
+ meshes=meshes.filter(m=>!m.userData.new_furnishing);for(const id of ids)assets.delete(id);
+ const built=createFurnishing(furnishingConfig);furnishingCatalog=built.catalog;
+ for(const o of built.meshes){model.add(o);meshes.push(o);const m=o.userData,id=m.asset_id;if(!assets.has(id))assets.set(id,{label:m.asset_label,room:m.asset_room,purchased:true,meshes:[]});assets.get(id).meshes.push(o);}
+ model.updateMatrixWorld(true);
+}
+function applyFurnishing(next){furnishingConfig=decodeFurnishing(next);rebuildFurnishing();}
+function renderFurnishing(){
+ $('newFurnitureEnabled').checked=furnishingConfig.enabled;$('diningDiameter').value=String(furnishingConfig.diameter);
+ $('newFurnitureSummary').textContent=`${furnishingConfig.enabled?'已显示':'已隐藏'} ${furnishingCatalog.length} 组新家具 / 配件；可在家具列表逐件删除、撤销。椅子暂排 4 把（次卧 2 + 小厅 2），数量待确认。`;
+ $('newFurnitureClearance').textContent=`圆桌直径 ${furnishingConfig.diameter*100} cm，高 75 cm；餐边柜暂按 180×41×90 cm。餐椅静态外缘到右墙约 ${(3.2-(1.08+furnishingConfig.diameter/2+.23+.22)).toFixed(2)} m，未扣坐人后移空间；右侧主通道不摆新柜。`;
+ $('furnitureInventory').innerHTML=furnishingCatalog.map(a=>`<li><b>${a.label}</b><small>${rooms[a.room]?.label||a.room} · ${a.basis.includes('estimated')?'尺寸 / 数量含暂估':'按商品图标注'} · 位置待现场复核</small></li>`).join('');
+}
+$('newFurnitureEnabled').onchange=e=>edit(()=>{clearSelection();furnishingConfig={...furnishingConfig,enabled:e.target.checked};});
+$('diningDiameter').onchange=e=>edit(()=>{clearSelection();applyFurnishing({...furnishingConfig,diameter:Number(e.target.value)});});
+$('applyPurchasedLayout').onclick=()=>{edit(()=>{BASE_REMOVALS.forEach(id=>deleted.add(id));furnishingConfig={...furnishingConfig,enabled:true};deskConfig={...deskConfig,enabled:true};clearSelection();});focusBedroom('living');};
+$('newLivingFocus').onclick=()=>focusBedroom('living');$('newStudyFocus').onclick=()=>focusBedroom('small');$('newMainFocus').onclick=()=>focusBedroom('main');
 function applyDesks(next){deskConfig=decodeDesks(next);rebuildDesks();}
 function deskAssessment(){
  const layout=deskLayout(rooms.small.rect,deskConfig),active=layout.desks.filter(d=>!deleted.has(d.id)),[x0,x1,y0,y1]=rooms.small.rect;
@@ -118,7 +140,7 @@ $('desksEnabled').onchange=e=>edit(()=>{deskConfig={...deskConfig,enabled:e.targ
 for(let i=0;i<2;i++)$('deskWidth'+i).onchange=e=>edit(()=>{const next={...deskConfig,widths:[...deskConfig.widths]};next.widths[i]=Number(e.target.value);clearSelection();applyDesks(next);});
 $('deskClearBed').onclick=()=>{deleteAsset('small-bed');focusDesks();};
 function toast(s){$('editStatus').textContent=s;}
-function status(){ $('status').textContent=`MVP v05 · ${meshes.length} 个网格 · ${assets.size} 件家具/设备 · ${doors.size} 组可交互门 · 已删除 ${deleted.size} 件`; }
+function status(){ $('status').textContent=`MVP v06 · ${meshes.length} 个网格 · ${assets.size} 件家具/设备 · ${doors.size} 组可交互门 · 已删除 ${deleted.size} 件`; }
 function clearSelection(){
  for(const o of meshes)if(o.material?.emissive)o.material.emissive.setHex(0);
  selectedId=null;selectedDoor=null;$('deleteSelected').hidden=true;$('quickDoor').hidden=true;
@@ -133,19 +155,19 @@ function selectAsset(id){
 }
 function syncMode(){
  document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.mode===mode);b.setAttribute('aria-pressed',b.dataset.mode===mode);});
- for(const o of meshes)o.visible=visibleMesh(o.userData,mode,furniture,deleted)&&(!o.userData.proposed_desk||deskConfig.enabled);
+ for(const o of meshes)o.visible=visibleMesh(o.userData,mode,furniture,deleted)&&(!o.userData.proposed_desk||deskConfig.enabled)&&(!o.userData.new_furnishing||furnishingConfig.enabled);
  $('modeLabel').textContent=mode==='cut'?'1.05 m 剖切 · 上部结构隐藏':mode==='shell'?'完整墙高 · 天花板隐藏':'完整空间 · 含天花板';
  if(selectedId&&(!furniture||deleted.has(selectedId)))clearSelection();
- renderDeskPanel();
+ renderDeskPanel();renderFurnishing();
 }
 function persist(){
  try{localStorage.setItem(storageKey,JSON.stringify(makePlan()));toast(`已自动保存 · 家具删除 ${deleted.size} 件 / 门 / 双桌方案 · 仅此浏览器生效，不影响其他人`);}
  catch{toast('浏览器无法自动保存，请点“保存方案 JSON”下载备份。');}
  status();
 }
-function edit(action){pushHistory(history,deleted,doorSnapshot(doors),deskConfig);action();syncMode();renderAssets();persist();}
+function edit(action){pushHistory(history,deleted,doorSnapshot(doors),deskConfig,furnishingConfig);action();syncMode();renderAssets();persist();}
 function deleteAsset(id){if(!assets.has(id)||deleted.has(id))return;edit(()=>{deleted.add(id);if(selectedId===id)clearSelection();});}
-function undo(){if(!history.length)return;const before=history.pop();deleted.clear();(before.deleted||before).forEach(id=>deleted.add(id));if(before.doors)applyDoorState(before.doors);clearSelection();if(before.desks)applyDesks(before.desks);syncMode();renderAssets();persist();}
+function undo(){if(!history.length)return;const before=history.pop();deleted.clear();(before.deleted||before).forEach(id=>deleted.add(id));if(before.doors)applyDoorState(before.doors);clearSelection();if(before.desks)applyDesks(before.desks);if(before.furnishing)applyFurnishing(before.furnishing);syncMode();renderAssets();persist();}
 function setDoorPose(d,value){
  d.value=value;for(const o of d.meshes){const p=poseDoor(o.userData,o.userDataPose.position,o.userDataPose.quaternion,value);o.position.copy(p.position);o.quaternion.copy(p.quaternion);}
 }
@@ -181,7 +203,7 @@ $('doorToggle').onclick=()=>{selectDoor($('doorSelect').value);toggleDoor($('doo
 $('quickDoor').onclick=()=>toggleDoor(selectedDoor);
 $('doorRange').oninput=e=>{
  const d=doors.get($('doorSelect').value);if(!d)return;
- if(!sliderEditing){pushHistory(history,deleted,doorSnapshot(doors),deskConfig);sliderEditing=true;}
+ if(!sliderEditing){pushHistory(history,deleted,doorSnapshot(doors),deskConfig,furnishingConfig);sliderEditing=true;}
  d.target=Number(e.target.value)/100;setDoorPose(d,d.target);renderDoor();
 };
 $('doorRange').onchange=()=>{sliderEditing=false;renderAssets();persist();};
@@ -193,7 +215,7 @@ function renderAssets(){
   if((r&&a.room!==r)||(term&&!`${a.label} ${rooms[a.room]?.label||''}`.toLowerCase().includes(term)))continue;
   const row=document.createElement('div');row.className='assetItem'+(deleted.has(id)?' deleted':'')+(selectedId===id?' chosen':'');
   const select=document.createElement('button');select.textContent=a.label;
-  const sub=document.createElement('small');sub.textContent=(rooms[a.room]?.label||'')+(a.proposed?' · 新增试摆':'')+(deleted.has(id)?' · 已删除':a.proposed&&!deskConfig.enabled?' · 方案已关闭':' · 点击定位整件');select.append(sub);
+  const sub=document.createElement('small');sub.textContent=(rooms[a.room]?.label||'')+(a.proposed?' · 新增试摆':a.purchased?' · 新购布局':'')+(deleted.has(id)?' · 已删除':(a.proposed&&!deskConfig.enabled||a.purchased&&!furnishingConfig.enabled)?' · 方案已关闭':' · 点击定位整件');select.append(sub);
   select.onclick=()=>{if(deleted.has(id)){toast('这件家具已删除，点击右侧“恢复”即可放回。');return;}focusAsset(id);};
   const change=document.createElement('button');change.textContent=deleted.has(id)?'恢复':'删除';change.setAttribute('aria-label',`${change.textContent}${a.label}`);
   change.onclick=()=>{if(deleted.has(id))edit(()=>deleted.delete(id));else deleteAsset(id);};row.append(select,change);$('assetList').append(row);
@@ -235,7 +257,7 @@ function top(){setDimensionScope(null);clearSelection();resetLens();setNav('orbi
 const notes={kitchen:'L 形台面绕开转角凸墙；凸墙性质和尺寸仍需现场确认。',entry:'入户门扇宽 86 cm；门洞与门框尺寸暂定。',living:'飘窗、灰色布衣柜、衣帽架、镜子和折叠桌，为现状布局。',bath:'入口旁洗手盆，内侧马桶，靠窗为淋浴和热水器。整体尺寸待复核。',small:'次卧门靠卫生间一端，门扇宽 76.5 cm；离墙角距离暂定。开门未做碰撞检测。',corridor:'连接卫生间、次卧和尽端卧室，走道尺寸暂定。',main:'松木床、白色床边桌、木桌置物架、紫布柜；推拉门通向阳台。',balcony:'短护栏、墙垛、服务管、分段玻璃护栏、木纹砖和双轨推拉门；细部尺寸仍待复核。'};
 function room(k){if(bedroomById.has(k)){focusBedroom(k);return;}setDimensionScope(null);clearSelection();resetLens();setNav('orbit');const r=rooms[k], [x0,x1,y0,y1]=r.rect;mode='cut';syncMode();const cx=(x0+x1)/2,cy=(y0+y1)/2;move(to3([cx+4,cy-3.7,5.7]),to3([cx,cy,.4]));setActiveRoom(k);$('roomInfo').innerHTML=`<b>${r.label} <span>约 ${(x1-x0).toFixed(2)} × ${(y1-y0).toFixed(2)} m</span></b><p>${notes[k]}</p>`;}
 function focusAsset(id){
- const a=assets.get(id);if(!a)return;if(a.proposed&&!deskConfig.enabled){toast('请先在“双桌试摆”中启用方案。');return;}setDimensionScope(null);setNav('orbit');resetLens();furniture=true;$('furniture').checked=true;
+ const a=assets.get(id);if(!a)return;if((a.proposed&&!deskConfig.enabled)||(a.purchased&&!furnishingConfig.enabled)){toast('请先启用对应的家具方案。');return;}setDimensionScope(null);setNav('orbit');resetLens();furniture=true;$('furniture').checked=true;
  mode=a.meshes.every(o=>o.userData.group==='high')?'shell':'cut';syncMode();selectAsset(id);
  const box=new THREE.Box3();a.meshes.forEach(o=>box.expandByObject(o));const c=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
  const scale=Math.max(1.8,size.length()*1.3);move(c.clone().add(new THREE.Vector3(scale*.7,scale*.9,scale*.65)),c);setActiveRoom(a.room);
@@ -255,13 +277,13 @@ $('assetSearch').oninput=renderAssets;$('assetRoom').onchange=renderAssets;
 $('deleteSelected').onclick=()=>deleteAsset(selectedId);$('undoEdit').onclick=undo;$('quickUndo').onclick=undo;
 $('restoreAll').onclick=()=>{if(deleted.size)edit(()=>deleted.clear());};
 function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.download=name;a.href=u;a.click();setTimeout(()=>URL.revokeObjectURL(u),60000);}
-function makePlan(){const target=nav==='fly'?camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3())):controls.target;return {schema:PLAN_SCHEMA,model:'MVP v05 + 双桌试摆',savedAt:new Date().toISOString(),deleted:[...deleted],doors:doorSnapshot(doors),desks:decodeDesks(deskConfig),camera:{position:camera.position.toArray(),target:target.toArray()},view:{mode,nav,fov:camera.fov}};}
-$('savePlan').onclick=()=>{download(new Blob([JSON.stringify(makePlan(),null,2)],{type:'application/json'}),'福州新家_家具调整方案.json');toast('已下载方案 JSON，包含家具删除、门开合、双桌尺寸与当前相机位置。');};
+function makePlan(){const target=nav==='fly'?camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3())):controls.target;return {schema:PLAN_SCHEMA,model:'MVP v06 + 已购家具布局',savedAt:new Date().toISOString(),deleted:[...deleted],doors:doorSnapshot(doors),desks:decodeDesks(deskConfig),furnishing:decodeFurnishing(furnishingConfig),camera:{position:camera.position.toArray(),target:target.toArray()},view:{mode,nav,fov:camera.fov}};}
+$('savePlan').onclick=()=>{download(new Blob([JSON.stringify(makePlan(),null,2)],{type:'application/json'}),'福州新家_家具调整方案.json');toast('已下载方案 JSON，包含家具删除、门开合、双桌、新家具配置与当前相机位置。');};
 $('importPlan').onclick=()=>$('planFile').click();
 $('planFile').onchange=async e=>{
  try{
   const f=e.target.files[0];if(!f)return;if(f.size>1000000)throw new Error('方案文件过大');
-  const p=decodePlan(await f.text(),new Set(assets.keys()),new Set(doors.keys()));edit(()=>{deleted.clear();p.deleted.forEach(id=>deleted.add(id));applyDoorState(p.doors);clearSelection();applyDesks(p.desks||{...defaultDesks(),enabled:false});});
+  const p=decodePlan(await f.text(),new Set(assets.keys()),new Set(doors.keys()));edit(()=>{deleted.clear();p.deleted.forEach(id=>deleted.add(id));applyDoorState(p.doors);clearSelection();applyDesks(p.desks||{...defaultDesks(),enabled:false});applyFurnishing(p.furnishing||{...defaultFurnishing(),enabled:false});});
   if(p.camera){setNav('orbit');mode=p.view?.mode||(p.camera.position[1]>3?'cut':'full');syncMode();camera.fov=p.view?.fov||42;camera.updateProjectionMatrix();move(new THREE.Vector3(...p.camera.position),new THREE.Vector3(...p.camera.target));if(p.view?.nav==='fly')tween.done=()=>setNav('fly',false);}
   toast(`已载入方案，删除 ${p.deleted.length} 件；可撤销本次载入。`);
  }catch(err){toast('载入失败：'+err.message);}finally{e.target.value='';}
@@ -270,7 +292,7 @@ $('exportEdited').onclick=async()=>{
  const b=$('exportEdited');if(!model)return;if(deskConfig.enabled&&!deskAssessment().fits){toast('试摆桌超出房间边界，请缩短桌长或关闭双桌试摆后再导出。');return;}b.disabled=true;b.textContent='正在导出…';
  try{
   for(const d of doors.values())setDoorPose(d,d.target);model.updateMatrixWorld(true);
-  const copy=model.clone(true);copy.traverse(o=>{if(o.userData.door_id)o.userData.door_default=doors.get(o.userData.door_id).target;});copy.traverse(o=>{o.visible=!(o.userData.asset_id&&deleted.has(o.userData.asset_id))&&(!o.userData.proposed_desk||deskConfig.enabled);if(o.isMesh){o.material=o.material.clone();o.material.emissive?.setHex(0);}});
+  const copy=model.clone(true);copy.traverse(o=>{if(o.userData.door_id)o.userData.door_default=doors.get(o.userData.door_id).target;});copy.traverse(o=>{o.visible=!(o.userData.asset_id&&deleted.has(o.userData.asset_id))&&(!o.userData.proposed_desk||deskConfig.enabled)&&(!o.userData.new_furnishing||furnishingConfig.enabled);if(o.isMesh){o.material=o.material.clone();o.material.emissive?.setHex(0);}});
   const binary=await new GLTFExporter().parseAsync(copy,{binary:true,onlyVisible:true});
   copy.traverse(o=>{if(o.isMesh)o.material.dispose();});
   download(new Blob([binary],{type:'model/gltf-binary'}),'福州新家_调整后模型.glb');toast(`已导出完整空间 GLB（移除 ${deleted.size} 件家具），原文件未改写。`);
@@ -366,11 +388,16 @@ function load(){
    model=g.scene;scene.add(model);model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.material=o.material.clone();o.material.side=THREE.DoubleSide;meshes.push(o);
     const id=o.userData.asset_id;if(id){if(!assets.has(id))assets.set(id,{label:o.userData.asset_label,room:o.userData.asset_room,meshes:[]});assets.get(id).meshes.push(o);}
    }});
-   rebuildDesks();$('deskControls').disabled=false;
+   rebuildDesks();rebuildFurnishing();$('deskControls').disabled=false;$('newFurnitureControls').disabled=false;
    for(const o of meshes){const m=o.userData;if(!m.door_id)continue;o.userDataPose={position:o.position.clone(),quaternion:o.quaternion.clone()};if(!doors.has(m.door_id))doors.set(m.door_id,{id:m.door_id,label:m.door_label,kind:m.door_kind,default:m.door_default,value:m.door_default,target:m.door_default,pivot:m.door_pivot,travel:m.door_travel,width:m.door_width_m,source:m.door_width_source,meshes:[]});doors.get(m.door_id).meshes.push(o);}
    for(const [id,d] of doors){const option=document.createElement('option');option.value=id;option.textContent=d.label+(d.width?` · ${(d.width*100).toFixed(1).replace(/\.0$/,'')} cm`:'');$('doorSelect').append(option);}
    renderDoor();
-   try{const raw=localStorage.getItem(storageKey);if(raw){const p=decodePlan(raw,new Set(assets.keys()),new Set(doors.keys()));p.deleted.forEach(id=>deleted.add(id));applyDoorState(p.doors);if(p.desks)applyDesks(p.desks);toast(`已恢复上次家具 / 门 / 双桌方案 · 删除 ${deleted.size} 件`);}}catch{toast('本地方案无法读取；当前显示原始家具，可载入 JSON 备份。');}
+   try{const raw=localStorage.getItem(storageKey);const p=raw?decodePlan(raw,new Set(assets.keys()),new Set(doors.keys())):null;
+    migrateRemovals(p).forEach(id=>deleted.add(id));if(p){applyDoorState(p.doors);if(p.desks)applyDesks(p.desks);if(p.furnishing)applyFurnishing(p.furnishing);}if(!p?.furnishing)deskConfig={...deskConfig,enabled:true};
+    // Mark migration once so a later explicit restore is respected. Keep saved camera intact.
+    const next={...makePlan(),...(p?.camera?{camera:p.camera}:{}),...(p?.view?{view:p.view}:{})};localStorage.setItem(storageKey,JSON.stringify(next));
+    toast(`已载入已购家具布局 · 保留删除 ${deleted.size} 件 · 可继续删除 / 撤销 / 保存 JSON`);
+   }catch{BASE_REMOVALS.forEach(id=>deleted.add(id));toast('已显示屋主 9 件删除基准；本地存档未覆盖，可载入 JSON 备份。');}
    home();renderAssets();$('loading').hidden=true;status();
   },err=>failure(err));
  }catch(err){failure(err);}

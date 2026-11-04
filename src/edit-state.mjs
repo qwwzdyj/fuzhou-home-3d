@@ -1,4 +1,5 @@
 import {decodeDoors} from './door-state.mjs';
+import {decodeFurnishing} from './furnishing-plan.mjs';
 import {decodeDesks} from './desk-plan.mjs';
 export const PLAN_SCHEMA = 'fuzhou-home-edit-plan-v1';
 export function visibleMesh(meta, mode, furniture, deleted) {
@@ -17,9 +18,10 @@ export function decodePlan(raw, knownIds, doorIds=new Set()) {
   if(view && (!['cut','shell','full'].includes(view.mode) || !['orbit','pan','fly'].includes(view.nav) || !Number.isFinite(view.fov) || view.fov<15 || view.fov>100)) throw new Error('视图设置无效');
   const doors=decodeDoors(p.doors,doorIds);
   const desks=decodeDesks(p.desks);
-  return { ...(doors===undefined?{}:{doors}), ...(desks===undefined?{}:{desks}), deleted: [...new Set(p.deleted)], camera, view };
+  const furnishing=decodeFurnishing(p.furnishing);
+  return { ...(furnishing===undefined?{}:{furnishing}), ...(doors===undefined?{}:{doors}), ...(desks===undefined?{}:{desks}), deleted: [...new Set(p.deleted)], camera, view };
 }
-export function pushHistory(history, deleted, doors, desks) {
-  history.push(doors ? {deleted:[...deleted], doors:{...doors},...(desks?{desks:decodeDesks(desks)}:{})} : [...deleted]);
+export function pushHistory(history, deleted, doors, desks, furnishing) {
+  history.push(doors ? {deleted:[...deleted], doors:{...doors},...(furnishing?{furnishing:decodeFurnishing(furnishing)}:{}),...(desks?{desks:decodeDesks(desks)}:{})} : [...deleted]);
   if (history.length > 50) history.shift();
 }
